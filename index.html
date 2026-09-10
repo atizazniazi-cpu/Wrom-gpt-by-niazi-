@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MIAN X NIAZI AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;min-height:100vh}
+body:before{content:"MIAN X NIAZI";position:fixed;inset:0;display:grid;place-items:center;
+font-size:12vw;font-weight:900;opacity:.035;pointer-events:none;letter-spacing:4px}
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #eee;padding:14px 14px 10px}
+.brand{font-size:21px;font-weight:900;letter-spacing:1px;animation:rgb 4s linear infinite}
+.sub{font-size:11px;color:#777;margin-top:3px}
+@keyframes rgb{0%{color:#f00}33%{color:#00aaff}66%{color:#00b84a}100%{color:#f00}}
+main{max-width:760px;margin:auto;padding:14px 12px 110px}
+.chat{display:flex;flex-direction:column;gap:10px}
+.msg{max-width:90%;padding:11px 13px;border-radius:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:4px}
+.ai{align-self:flex-start;background:#f2f2f2;border-bottom-left-radius:4px}
+.welcome{padding:25px 12px;text-align:center;color:#666;font-size:14px}
+.composer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;padding:10px;z-index:10}
+.box{max-width:760px;margin:auto;display:flex;gap:8px}
+textarea{flex:1;resize:none;border:1px solid #ddd;border-radius:14px;padding:12px;outline:none;font-size:15px;min-height:46px;max-height:130px}
+button{border:0;border-radius:13px;padding:0 16px;font-weight:800;cursor:pointer}
+#send{background:#111;color:#fff;min-width:72px}
+#clear{background:#eee;color:#111;height:38px;margin-top:9px}
+button:disabled{opacity:.5}
+.status{text-align:center;font-size:11px;color:#888;padding:5px}
+.dots span{display:inline-block;width:6px;height:6px;background:#888;border-radius:50%;margin:0 2px;animation:b .8s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{50%{transform:translateY(-4px);opacity:.4}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">MIAN X NIAZI AI</div>
+  <div class="sub">Powered by your configured AI API</div>
+  <button id="clear">Clear Chat</button>
+</header>
+<main>
+  <div id="chat" class="chat">
+    <div class="welcome">Hello 👋<br>Send a message to start chatting.</div>
+  </div>
+</main>
+<div class="composer">
+  <div class="status" id="status"></div>
+  <div class="box">
+    <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
+    <button id="send">Send</button>
+  </div>
+</div>
+<script>
+const chat=document.getElementById("chat"), input=document.getElementById("input"),
+send=document.getElementById("send"), status=document.getElementById("status");
+let messages=[];
+function add(role,text){
+  const el=document.createElement("div");
+  el.className="msg "+(role==="user"?"user":"ai");
+  el.textContent=text; chat.appendChild(el);
+  window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+  return el;
+}
+function typing(){
+  const el=document.createElement("div"); el.className="msg ai dots";
+  el.innerHTML="<span></span><span></span><span></span>"; chat.appendChild(el); return el;
+}
+async function doSend(){
+  const text=input.value.trim(); if(!text||send.disabled)return;
+  document.querySelector(".welcome")?.remove();
+  input.value=""; messages.push({role:"user",content:text}); add("user",text);
+  send.disabled=true; status.textContent="Thinking...";
+  const t=typing();
+  try{
+    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages})});
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||"Request failed");
+    const reply=data?.choices?.[0]?.message?.content ??
+      data?.choices?.[0]?.text ?? data?.message?.content ?? data?.response ??
+      data?.content ?? "No response returned by the API.";
+    t.remove(); add("assistant",String(reply)); messages.push({role:"assistant",content:String(reply)});
+  }catch(e){t.remove();add("assistant","❌ "+e.message)}
+  finally{send.disabled=false;status.textContent="";input.focus()}
+}
+send.onclick=doSend;
+input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend()}});
+document.getElementById("clear").onclick=()=>{messages=[];chat.innerHTML='<div class="welcome">Hello 👋<br>Send a message to start chatting.</div>'};
+</script>
+</body>
+</html>
